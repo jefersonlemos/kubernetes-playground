@@ -13,43 +13,40 @@ kubectl apply -f k8s/namespace.yaml
 
 ################################################### Create the TLS certificates and keys
 # Generate the certificate
-openssl genrsa -out ca.key 2048
-openssl req -new -x509 -key ca.key -out ca.crt -subj "/CN=${WEBHOOK_NAME}-ca"
+openssl genrsa -out key.pem 2048
 
-# Create the webhook server's certificate signed by the CA
-openssl genrsa -out server.key 2048
-openssl req -new -key server.key -out server.csr -subj "/CN=${WEBHOOK_SERVICE}.${WEBHOOK_NAMESPACE}.svc" -config <(
-cat <<EOF
+cat > csr.conf <<EOF
 [req]
-distinguished_name = req_distinguished_name
 req_extensions = v3_req
+distinguished_name = req_distinguished_name
 [req_distinguished_name]
-[v3_req]
+[ v3_req ]
 basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
+
 [alt_names]
-DNS.1 = ${WEBHOOK_SERVICE}
-DNS.2 = ${WEBHOOK_SERVICE}.${WEBHOOK_NAMESPACE}
-DNS.3 = ${WEBHOOK_SERVICE}.${WEBHOOK_NAMESPACE}.svc
-DNS.4 = ${WEBHOOK_SERVICE}.${WEBHOOK_NAMESPACE}.svc.cluster.local
+DNS.1 = ${WEBHOOK_SERVICE}.${WEBHOOK_NAMESPACE}.svc
+DNS.2 = ${WEBHOOK_SERVICE}.${WEBHOOK_NAMESPACE}.svc.cluster.local
 EOF
-)
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
-openssl req -new -key server.key -out server.csr -subj "/CN=${WEBHOOK_SERVICE}" -config csr.conf
+
+openssl req -x509 -new -nodes -key key.pem -sha256 -days 365 \
+  -out cert.pem -subj "/CN=${WEBHOOK_SERVICE}.${WEBHOOK_NAMESPACE}.svc" \
+  -extensions v3_req -config csr.conf
+
 
 # Adjusts the secret manifest
-if [[ -f server.crt ]]; then
+if [[ -f cert.pem ]]; then
   
-  echo -n "  tls.crt: `cat server.crt | base64 | tr -d '\n'`" >> k8s/secrets_certificate.yaml 
+  echo -n "  cert.pem: `cat cert.pem | base64 | tr -d '\n'`" >> k8s/secrets_certificate.yaml 
   echo "" >> k8s/secrets_certificate.yaml
-  echo -n "  tls.key: `cat server.key | base64 | tr -d '\n'`" >> k8s/secrets_certificate.yaml 
+  echo -n "  key.pem: `cat key.pem | base64 | tr -d '\n'`" >> k8s/secrets_certificate.yaml 
 fi
 
 # Adds CA Bundle to the webhook configuration
 if [[ -f ca.crt ]]; then
-  sed -i '/caBundle:/!b;n;c\        '"$(cat ca.crt | base64 | tr -d '\n')" k8s/webhook.yaml
+  sed -i '/caBundle:/!b;n;c\        '"$(cat cert.pem | base64 | tr -d '\n')" k8s/webhook.yaml
 fi
 
 # ################################################## Create the Kubernetes resources

@@ -1,0 +1,45 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mutation-webhook-service
+  namespace: mutation-webhook
+spec:
+  selector:
+    app: mutation-webhook
+  ports:
+  - protocol: TCP
+    port: 443
+    targetPort: 8443
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mutation-webhook-deployment
+  namespace: mutation-webhook
+  labels:
+    app: mutation-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mutation-webhook
+  template:
+    metadata:
+      labels:
+        app: mutation-webhook
+    spec:
+      containers:
+      - name: mutation-webhook-container
+        image: jefoso/mutation-webhook:latest
+        ports:
+        - containerPort: 8443
+        volumeMounts:
+        - name: mutation-webhook-tls
+          mountPath: /etc/webhook/certs
+          readOnly: true
+      volumes:
+      - name: mutation-webhook-tls
+        secret:
+          secretName: mutation-webhook-tls

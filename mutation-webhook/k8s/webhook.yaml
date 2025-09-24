@@ -1,0 +1,23 @@
+
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: mutation-webhook-configuration
+webhooks:
+  - name: mutation-webhook.poc.com
+    clientConfig:
+      service:
+        name: mutation-webhook-service
+        namespace: mutation-webhook
+        path: "/mutate"
+      caBundle: |
+        << CA_BUNDLE >>
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    sideEffects: None
+    admissionReviewVersions: ["v1", "v1beta1"]

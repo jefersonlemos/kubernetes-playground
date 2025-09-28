@@ -1,11 +1,14 @@
 # What's it
 
+
+Repository: https://github.com/kubernetes-sigs/aws-load-balancer-controller
+
 # How it works
 
 ![AWS Load Balancer Controller Architecture](https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/groups-in-action.png)
 
 
-It watches the Kubernetes API server for updates to Ingress resources. When it detects changes, it updates resources such as the Application Load Balancer, listeners, target groups, and listener rules. <<<< tem um mutating webhook 
+It watches the Kubernetes API server for updates to Ingress resources. When it detects changes, it updates resources such as the Application Load Balancer, listeners, target groups, and listener rules. #TODO Tem mutation webhook, comentar sobre isso
 
 A Target group gets created for every Kubernetes Service mentioned in the ingress resource
 Listeners are created for every port defined in the ingress resource’s annotations
@@ -19,9 +22,9 @@ Listener rules (also called ingress rules) are created for each path in Ingress 
 ordem de criação (priority)
 https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/2203
 https://kubernetes.io/docs/concepts/services-networking/ingress/#multiple-matches
-ver direitinho, mas acho que prioridade da rule é menor de acordo com o tamanho do path setado no ingress
+#TODO ver direitinho, mas acho que prioridade da rule é menor de acordo com o tamanho do path setado no ingress
 https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/3450
-???? porém, como que fica tudo isso quando mistura multiplos ingress com multiplas regras ????
+#TODO ???? porém, como que fica tudo isso quando mistura multiplos ingress com multiplas regras ????
 The priority on the rules is decided on the PathType. The prefix type take higher priority here than the implementations specific. https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.7/guide/ingress/spec/#ingress-specification
 
 problem : cost
@@ -49,12 +52,47 @@ ALB can distribute traffic to multiple backends using weighted target groups. Yo
 Such traffic controls are especially useful when performing blue/green cluster upgrades. You can migrate traffic from the older cluster to the newer in a controlled manner.
 
 
+## Traffic mode
 
+AWS Load Balancer controller supports two traffic modes:
+
+Instance mode
+IP mode
+By default, Instance mode is used, users can explicitly select the mode via alb.ingress.kubernetes.io/target-type annotation.
+
+Instance mode¶
+Ingress traffic starts at the ALB and reaches the Kubernetes nodes through each service's NodePort. This means that services referenced from ingress resources must be exposed by type:NodePort in order to be reached by the ALB.
+
+IP mode¶
+Ingress traffic starts at the ALB and reaches the Kubernetes pods directly. CNIs must support directly accessible POD ip via secondary IP addresses on ENI.
+
+# Pontos importantes, highlights
+- add uma área meio que de quick tips onde vai ter uma bulleted list com pontos importantes tipo
+    - ao deletar, controler duplica a regra
+        - nao atinja o limite de rule (201)
 
 
 Ideias pra resolver o problema da LC
 - Aumentar limite de rules per ALB ?
 
+
+# TODO's
+[] comparativo de performance quando usando o multiplos ingress/apps no ALB
+
+[] estar (nao necessariamente precisa ir pra POC) :
+
+- testar o group.order com os 40 ingress e ver o que da
+    - testar isso primeiro com o webhook e depois sem
+    - observar o que acontece ao deletar ingress
+        - se duplica rule
+        - como fica a priority
+            - ver como fica a prioridade quando mescla multiplos ingress e rules per ingress
+    - measurements
+        - fazer essas medidas com webhook e sem
+        - tempo de criação do ingress e alb com group.order
+        - tempo de ajuste das priorities apõs a exclusao do ingress
+[] colocar aqui os arquivos de config que eu lembrar, tipo 
+ingress class
 
 
 

@@ -1,0 +1,116 @@
+
+#Single ALB with multiple rules
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:077210449609:certificate/a87b0943-9fn1-873j-09904577nef2
+    alb.ingress.kubernetes.io/group.name: internal-alb
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/security-groups: testing-alb
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=60
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+    kubernetes.io/ingress.class: alb
+  name: basic-ingress-with-multiple-rules-1
+  namespace: testing-ingress
+spec:
+  rules:
+  - host: basic-ingress-with-multiple-rules.testingdomain.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: testing-service
+            port:
+              number: 8080
+        path: /this/is/the/second/rule
+        pathType: ImplementationSpecific
+  - host: basic-ingress-with-multiple-rules.testingdomain.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: testing-service
+            port:
+              number: 8080
+        path: /this/is/a/long/path/and/is/the/first/in/the/list
+        pathType: ImplementationSpecific        
+  - host: basic-ingress-with-multiple-rules.testingdomain.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: testing-service
+            port:
+              number: 8080
+        path: /last/rule
+        pathType: ImplementationSpecific              
+
+
+---
+# Single ALB with multiple rules and path-based routing to same target group
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/actions.forward-jeferson: |
+      {
+       "Type":"forward",
+       "ForwardConfig": {
+         "TargetGroups": [
+           {
+             "ServiceName": "testing-service",
+             "ServicePort":"8080",
+             "Weight": 100
+           }
+         ]
+       }
+      }
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:077210449609:certificate/a87b0943-9fn1-873j-09904577nef2
+    alb.ingress.kubernetes.io/conditions.forward-jeferson: |
+      #[{"field":"host-header","hostHeaderConfig":{"values":["app1.basic-ingress-with-multiple-rules.testingdomain.com","app2.basic-ingress-with-multiple-rules.testingdomain.com"]}}]
+      [{"field":"path-pattern","pathPatternConfig":{"values":["/like-the-first-service", "/similar-to-the-first-service"]}}]
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/security-groups: testing-alb
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=60
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+  name: basic-ingress-with-multiple-rules-2
+  namespace: testing-ingress
+spec:
+  rules:
+  - host: basic-ingress-with-multiple-rules.testingdomain.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: forward-jeferson
+            port:
+              name: use-annotation
+        path: /first-service
+        pathType: ImplementationSpecific
+      - backend:
+          service:
+            name: testing-service-2
+            port:
+              number: 8080
+        path: /second-service
+        pathType: ImplementationSpecific

@@ -8,13 +8,15 @@ Repository: https://github.com/kubernetes-sigs/aws-load-balancer-controller
 ![AWS Load Balancer Controller Architecture](https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/groups-in-action.png)
 
 
-It watches the Kubernetes API server for updates to Ingress resources. When it detects changes, it updates resources such as the Application Load Balancer, listeners, target groups, and listener rules. #TODO Tem mutation webhook, comentar sobre isso
+## Highlights
+* It watches the Kubernetes API server for updates to Ingress resources. When it detects changes, it updates resources such as the Application Load Balancer, listeners, target groups, and listener rules, it has a [mutation webhook](https://github.com/kubernetes-sigs/aws-load-balancer-controller/blob/main/helm/aws-load-balancer-controller/templates/webhook.yaml) to listen to the ingress changes.
+* A Target group gets created for every Kubernetes Service mentioned in the ingress resource
+* ALB Listeners are created for every port defined in the ingress resource’s annotations
+* Listener rules (also called ingress rules) are created for each path in Ingress resource definition
+* It's possible to use an `OR` operator and create less rules via [conditions](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.13/guide/ingress/annotations/#conditions) annotation. 
+* Having an ALB next to the rules limit(100) may cause issues on the ALB reconciliation process #TODO Improve it
 
-A Target group gets created for every Kubernetes Service mentioned in the ingress resource
-Listeners are created for every port defined in the ingress resource’s annotations
-Listener rules (also called ingress rules) are created for each path in Ingress resource definition
-
-
+#TODO - Check this image
 ![imagem mostrando o roteamento ](https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/load-balancer-routing.png)
 
 ## Rules
@@ -25,12 +27,13 @@ https://kubernetes.io/docs/concepts/services-networking/ingress/#multiple-matche
 #TODO ver direitinho, mas acho que prioridade da rule é menor de acordo com o tamanho do path setado no ingress
 https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/3450
 #TODO ???? porém, como que fica tudo isso quando mistura multiplos ingress com multiplas regras ????
+
 The priority on the rules is decided on the PathType. The prefix type take higher priority here than the implementations specific. https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.7/guide/ingress/spec/#ingress-specification
 
 problem : cost
 solucao: ingress group
 
-An important aspect to consider before using IngressGroup in a multi-tenant environment is conflict resolution. When AWS Load Balancer Controller configures ingress rules in ALB, it uses the group.order field to set the order of evaluation. If you don’t declare a value for group.order, the Controller defaults to 0.
+An important aspect to consider before using IngressGroup in a multi-tenant environment is conflict resolution. When AWS Load Balancer Controller configures ingress rules in ALB, it uses the group.order field to set the order of evaluation. **If you don’t declare a value for group.order, the Controller defaults to 0.**
 
 Rules with lower order value are evaluated first. By default, the rule order between Ingresses within an IngressGroup is determined by the lexical order of Ingress’s namespace/name.
 
@@ -52,7 +55,7 @@ ALB can distribute traffic to multiple backends using weighted target groups. Yo
 Such traffic controls are especially useful when performing blue/green cluster upgrades. You can migrate traffic from the older cluster to the newer in a controlled manner.
 
 
-## Traffic mode
+## Traffic mode #TODO Dar uma lida rapida sore isso
 
 AWS Load Balancer controller supports two traffic modes:
 
@@ -66,40 +69,9 @@ Ingress traffic starts at the ALB and reaches the Kubernetes nodes through each 
 IP mode¶
 Ingress traffic starts at the ALB and reaches the Kubernetes pods directly. CNIs must support directly accessible POD ip via secondary IP addresses on ENI.
 
-# Pontos importantes, highlights
-- add uma área meio que de quick tips onde vai ter uma bulleted list com pontos importantes tipo
-    - ao deletar, controler duplica a regra
-        - nao atinja o limite de rule (201)
-
-
-Ideias pra resolver o problema da LC
-- Aumentar limite de rules per ALB ?
-
 
 # TODO's
 [] comparativo de performance quando usando o multiplos ingress/apps no ALB
-
-[] estar (nao necessariamente precisa ir pra POC) :
-
-- testar o group.order com os 40 ingress e ver o que da
-    - testar isso primeiro com o webhook e depois sem
-    - observar o que acontece ao deletar ingress
-        - se duplica rule
-        - como fica a priority
-            - ver como fica a prioridade quando mescla multiplos ingress e rules per ingress
-    - measurements
-        - fazer essas medidas com webhook e sem
-        - tempo de criação do ingress e alb com group.order
-        - tempo de ajuste das priorities apõs a exclusao do ingress
-[] colocar aqui os arquivos de config que eu lembrar, tipo 
-ingress class
-
-
-
-
-
-
-
 
 
 https://aws.amazon.com/blogs/containers/a-deeper-look-at-ingress-sharing-and-target-group-binding-in-aws-load-balancer-controller/

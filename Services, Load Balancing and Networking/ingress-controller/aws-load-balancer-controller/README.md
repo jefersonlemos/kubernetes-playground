@@ -19,46 +19,71 @@ Repository: https://github.com/kubernetes-sigs/aws-load-balancer-controller
         * Fail to delete ingress because it's no longer able to delete rules on ALB
         * Fail to reconcile, even if rules get deleted, ALB priorities will never sync withe resource Id tag (alb controller uses it)
 
-#TODO - Check this image
-![imagem mostrando o roteamento ](https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/load-balancer-routing.png)
-
 ## Rules
 
-ordem de criação (priority)
-https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/2203
-https://kubernetes.io/docs/concepts/services-networking/ingress/#multiple-matches
-#TODO ver direitinho, mas acho que prioridade da rule é menor de acordo com o tamanho do path setado no ingress
+The AWS Application Load Balancer act as a reverse proxy routing requests to targets, so **order matters**. I mean, if you have a rule like `path: /api/*` with priority 1 and another rule `path: /api/v2/*` with priority 2, requests to `/api/v2/consumer` or `/api/v2/orders` or anything after the `/api` would redirect the request to the target defined in the first rule because it comes first. The request will never reach the second rule because the first one already matches it. Let me talk a little bit more about ordering and priorities.
+
+#TODO - Add a quick text talking about the simple 1x1 use case and then drill down to the 1xN
+### One ALB per Ingress
+
+#TODO - ALB with multiple ingresses
+### One ALB per multiple ingresses
+![imagem mostrando o roteamento](https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/load-balancer-routing.png)
+
+why use it?
+ingress group
+    An important aspect to consider before using IngressGroup in a multi-tenant environment is conflict resolution. When AWS Load Balancer Controller configures ingress rules in ALB, it uses the `group.order` field to set the order of evaluation. **If you don’t declare a value for group.order, the Controller defaults to 0.**
+
+
+ingress order
+    ingress rules and priority
+    ordem de criação (priority)
+        https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/2203
+        https://kubernetes.io/docs/concepts/services-networking/ingress/#multiple-matches
+    
+    Rules with lower order value are evaluated first. By default, the rule order between Ingresses within an IngressGroup is determined by the lexical order of Ingress’s namespace/name.
+
+#TODO - Finish here
+### Paths ordering
+pathType        
+
 https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/3450
-#TODO ???? porém, como que fica tudo isso quando mistura multiplos ingress com multiplas regras ????
 
 The priority on the rules is decided on the PathType. The prefix type take higher priority here than the implementations specific. https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.7/guide/ingress/spec/#ingress-specification
 
-problem : cost
-solucao: ingress group
 
-An important aspect to consider before using IngressGroup in a multi-tenant environment is conflict resolution. When AWS Load Balancer Controller configures ingress rules in ALB, it uses the group.order field to set the order of evaluation. **If you don’t declare a value for group.order, the Controller defaults to 0.**
+### Summary
 
-Rules with lower order value are evaluated first. By default, the rule order between Ingresses within an IngressGroup is determined by the lexical order of Ingress’s namespace/name.
+examples:
+1x1 - 1 alb per 1 ingress -> how rules will look like
+1xn - 1 alb many ingresses -> how rules will look like
 
-AWS ALB (Application Load Balancer) has several limits on the number of rules that can be configured per listener. These limits are in place to prevent overloading the load balancer and impacting its performance. For example, each ALB listener can have up to 100 rules by default
+#TODO - Add here something like a precedence list, if possible
 
-https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.13/
-https://github.com/kubernetes-sigs/aws-load-balancer-controller
+ingress
+    |_ rule
+        |_pathType
 
+
+#TODO - Finish here
 ## Target group binding
 
 TargetGroupBinding is a custom resource managed by the AWS Load Balancer Controller. It allows you to expose Kubernetes applications using existing load balancers. A TargetGroupBinding resource binds a Kubernetes Service with a load balancer target group. When you create a TargetGroupBinding resource, the controller automatically configures the target group to route traffic to a Service. Here’s an example of a TargetGroupBinding resource:
 
-https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/TargetGroupBinding.png
+![targetGroup Binding ]https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/TargetGroupBinding.png
 
 
+#TODO - Nao conhecia isso, deixar por ultimo e ver a complexidade e ver se faz sentdo ter aqui.
 ## Load balance application traffic across clusters
 ALB can distribute traffic to multiple backends using weighted target groups. You can use this feature to route traffic to multiple clusters by first creating a target group for each cluster and then binding the target group to Services in multiple clusters. This strategy allows you to control the percentage of traffic you send to each cluster.
 
 Such traffic controls are especially useful when performing blue/green cluster upgrades. You can migrate traffic from the older cluster to the newer in a controlled manner.
 
 
-## Traffic mode #TODO Dar uma lida rapida sore isso
+
+#TODO Dar uma lida rapida sore isso e add here, é importante
+
+## Traffic mode 
 
 AWS Load Balancer controller supports two traffic modes:
 
@@ -74,7 +99,14 @@ Ingress traffic starts at the ALB and reaches the Kubernetes pods directly. CNIs
 
 
 # TODO's
-[] comparativo de performance quando usando o multiplos ingress/apps no ALB
+[] comparativo de performance quando usando o multiplos ingress/apps no ALB. isso aqui é legal de fazer
 
+
+
+
+# References
 
 https://aws.amazon.com/blogs/containers/a-deeper-look-at-ingress-sharing-and-target-group-binding-in-aws-load-balancer-controller/
+
+https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.13/
+https://github.com/kubernetes-sigs/aws-load-balancer-controller

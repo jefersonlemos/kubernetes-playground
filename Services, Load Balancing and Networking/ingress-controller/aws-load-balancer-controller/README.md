@@ -14,7 +14,10 @@ Repository: https://github.com/kubernetes-sigs/aws-load-balancer-controller
 * ALB Listeners are created for every port defined in the ingress resource’s annotations
 * Listener rules (also called ingress rules) are created for each path in Ingress resource definition
 * It's possible to use an `OR` operator and create less rules via [conditions](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.13/guide/ingress/annotations/#conditions) annotation. 
-* Having an ALB next to the rules limit(100) may cause issues on the ALB reconciliation process #TODO Improve it
+* Having an ALB with the number of rules close to limit(100) may cause issues on the ALB reconciliation process
+    * In my experience, an ALB with extended limit(200), when reached the rules limit, started to:
+        * Fail to delete ingress because it's no longer able to delete rules on ALB
+        * Fail to reconcile, even if rules get deleted, ALB priorities will never sync withe resource Id tag (alb controller uses it)
 
 #TODO - Check this image
 ![imagem mostrando o roteamento ](https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/load-balancer-routing.png)

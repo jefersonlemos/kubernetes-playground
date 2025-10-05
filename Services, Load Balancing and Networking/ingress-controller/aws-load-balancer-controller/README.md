@@ -40,21 +40,24 @@ In this scenario, rules priorities will consider only **the order the rules are 
 
 ### One ALB per multiple ingresses
 ![multiple-rules-ingress](https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/load-balancer-routing.png)
+
 This is a more complex scenario where one single ALB will handle multiple ingresses rules so the ordering changes a little bit. 
 
 **1st - Ingress order** - If the `group.order` annotation is not set, it will set the priority 0 to all ingresses and will are determine ALB order (or priority) by the lexical order of Ingress’s namespace/name.
 
 **2nd - Ingresses rules** - After defining the ingresses order to add the rules to the ALB, it will also respect the order the rules are set in ingress.
 
-[Here](./manifests/2.ingress-multiple-rules.md#order-matters). I explain in details how it works.
+In the [ingress-multiple-rules.md](./manifests/2.ingress-multiple-rules.md#how-it-works) I explain in details how it works.
 
 
-#TODO - Finish TG
 ## Target group binding
 
-TargetGroupBinding is a custom resource managed by the AWS Load Balancer Controller. It allows you to expose Kubernetes applications using existing load balancers. A TargetGroupBinding resource binds a Kubernetes Service with a load balancer target group. When you create a TargetGroupBinding resource, the controller automatically configures the target group to route traffic to a Service. Here’s an example of a TargetGroupBinding resource:
+TargetGroupBinding is a custom resource managed by the AWS Load Balancer Controller. It allows you to expose Kubernetes applications using existing load balancers. A TargetGroupBinding resource binds a Kubernetes Service with a load balancer target group. When you create a TargetGroupBinding resource, the controller automatically configures the target group to route traffic to a Service.
 
-![targetGroup Binding ]https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/TargetGroupBinding.png
+Whenever an ingress is added, it creates this `TargetGroupBinding` resource but it's also to create it when we want to use an ALB that wasn't created by the `aws alb controller`.
+
+
+![targetGroup Binding ](https://d2908q01vomqb2.cloudfront.net/fe2ef495a1152561572949784c16bf23abb28057/2023/03/22/TargetGroupBinding.png)
 
 
 #TODO - Nao conhecia isso, deixar por ultimo e ver a complexidade e ver se faz sentdo ter aqui.

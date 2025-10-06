@@ -78,11 +78,33 @@ Ingress traffic starts at the ALB and reaches the Kubernetes nodes through each 
 
 Ingress traffic starts at the ALB and reaches the Kubernetes pods directly. CNIs must support directly accessible POD ip via secondary IP addresses on ENI.
 
+# Performance test
+I ran some tests with a single app and a load balancer with 181 rules pointing to different apps.
+This is the command I used: `https://my-app/health-check`
 
-# TODO's
-[] comparativo de performance quando usando o multiplos ingress/apps no ALB. isso aqui é legal de fazer
+## Explanation
+
+- Without OR: One rule per host
+- With OR: I changed the rules to evaluate 3 different hosts with an `OR` condition
 
 
+## Results
+
+| Test                              | Avg Latency (s) | Req/sec | Success (200) | Fail (503) | Notes                    |
+|------------------------------------|-----------------|---------|---------------|------------|--------------------------|
+| With OR                           | 0.2578          | 193.9   | 11657         | 0          | Baseline with complex rule|
+| Without OR 1                      | 0.2537          | 196.6   | 11842         | 0          | Slightly faster          |
+| Without OR 2                      | 0.2461          | 203.1   | 5406          | 6799       | 503 spike (possible misroute)|
+| With OR on alb2                   | 0.2504          | 199.2   | 11995         | 0          | Stable and solid         |
+| With OR on alb2, alb3, alb9       | 0.2548          | 196.1   | 11787         | 0          | Slight degradation       |
+| With OR on alb2, alb3, alb9 until priority 30 | 0.2523 | 198.1   | 11915         | 0          | Stable again             |
+
+## Analysis
+
+1. Performance Difference (OR vs No OR)
+
+I didn't see significant differeces running the tests with or without the `OR` condition. The results and perception during the tests look very similar.
+Important to mention that I ran from my local computer, using `hey` and there were no real traffic in that specific ALB.
 
 
 # References

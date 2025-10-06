@@ -106,6 +106,8 @@ This is the command I used: `https://my-app/health-check`
 I didn't see significant differeces running the tests with or without the `OR` condition. The results and perception during the tests look very similar.
 Important to mention that I ran from my local computer, using `hey` and there were no real traffic in that specific ALB.
 
+PS: I decided to run the same test against the same ALB but now with 13 rules, and the results are pretty similar.
+
 
 # References
 

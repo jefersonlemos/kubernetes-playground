@@ -26,20 +26,19 @@ metadata:
   name: demo-service
   namespace: default
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: demo
   ports:
   - port: 80
     targetPort: 80
-    nodePort: 30080
 ---
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: GatewayClass
 metadata:
-  name: demo-gateway-class
+  name: contour
 spec:
-  controllerName: "example.com/gateway-controller"
+  controllerName: projectcontour.io/gateway-controller
 ---
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: Gateway
@@ -47,7 +46,7 @@ metadata:
   name: demo-gateway
   namespace: default
 spec:
-  gatewayClassName: demo-gateway-class
+  gatewayClassName: contour
   listeners:
   - name: http
     protocol: HTTP
@@ -72,3 +71,4 @@ spec:
     backendRefs:
     - name: demo-service
       port: 80
+      weight: 1

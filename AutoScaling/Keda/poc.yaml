@@ -1,0 +1,149 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keda-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-worker
+  namespace: keda-demo
+data:
+  worker.py: |
+    import json
+    import os
+    import socket
+    import time
+
+    HOST = os.getenv("REDIS_HOST", "redis")
+    PORT = 6379
+
+    def read_response(sock):
+        line = b""
+        while not line.endswith(b"\r\n"):
+            line += sock.recv(1)
+        if line.startswith(b"*"):
+            count = int(line[1:-2])
+            return [read_response(sock) for _ in range(count)]
+        if line.startswith(b"$"):
+            length = int(line[1:-2])
+            data = b""
+            while len(data) < length + 2:
+                data += sock.recv(length + 2 - len(data))
+            return data[:-2].decode()
+        return line[1:-2].decode()
+
+    def command(sock, *parts):
+        payload = f"*{len(parts)}\r\n".encode()
+        for part in parts:
+            value = str(part).encode()
+            payload += f"${len(value)}\r\n".encode() + value + b"\r\n"
+        sock.sendall(payload)
+        return read_response(sock)
+
+    while True:
+        try:
+            with socket.create_connection((HOST, PORT), timeout=15) as redis:
+                order = command(redis, "BRPOP", "orders", "5")
+                if isinstance(order, list) and len(order) == 2:
+                    payload = json.loads(order[1])
+                    print(f"{os.getenv('HOSTNAME')} processing order {payload['order_id']}", flush=True)
+                    time.sleep(8)
+                    print(f"{os.getenv('HOSTNAME')} completed order {payload['order_id']}", flush=True)
+        except Exception as error:
+            print(f"worker waiting for Redis: {error}", flush=True)
+            time.sleep(2)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: keda-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          readinessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 2
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: keda-demo
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-worker
+  namespace: keda-demo
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: order-worker
+  template:
+    metadata:
+      labels:
+        app: order-worker
+    spec:
+      containers:
+        - name: order-worker
+          image: python:3.12-alpine
+          command: ["python", "/app/worker.py"]
+          env:
+            - name: REDIS_HOST
+              value: redis
+          volumeMounts:
+            - name: worker-code
+              mountPath: /app
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 96Mi
+      volumes:
+        - name: worker-code
+          configMap:
+            name: order-worker
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: order-worker
+  namespace: keda-demo
+spec:
+  scaleTargetRef:
+    name: order-worker
+  pollingInterval: 5
+  cooldownPeriod: 30
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  triggers:
+    - type: redis
+      metadata:
+        address: redis.keda-demo.svc.cluster.local:6379
+        listName: orders
+        listLength: "5"

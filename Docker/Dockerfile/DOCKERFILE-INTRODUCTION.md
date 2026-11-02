@@ -24,7 +24,9 @@ In Docker Build, build arguments (ARG) and environment variables (ENV) both serv
 
 Example [`1.arg`](./1.arg):
 ```shell
-docker build --build-arg NAME=paulao -t app:arg.1 -f 1.arg . 
+docker build --build-arg NAME=paulao -t app:arg.1 -f 1.arg .
+
+docker build --build-arg NAME=paulao -t app:arg.2 -f 1.arg . 
 ```
 
 ## CMD vs ENTRYPOINT
@@ -88,6 +90,8 @@ docker build -f 3.layers_1 -t dockerfile-layers-1 .
 ```
 ```shell
 docker image ls 
+
+docker run --rm dockerfile-layers-1 ls -lhart /tmp
 
 docker history dockerfile-layers-1
 ```

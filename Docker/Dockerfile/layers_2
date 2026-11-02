@@ -1,0 +1,9 @@
+FROM golang:1.25 AS build
+WORKDIR /app
+COPY ./app ./
+
+RUN dd if=/dev/zero of=/tmp/arquivo.bin bs=1M count=200
+RUN rm /tmp/arquivo.bin
+
+RUN go build -o /app/hello .
+CMD ["/app/hello"]

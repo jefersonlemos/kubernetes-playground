@@ -1,0 +1,3 @@
+FROM dockerfile-multistage
+ENTRYPOINT ["ls"]
+CMD ["/app"]

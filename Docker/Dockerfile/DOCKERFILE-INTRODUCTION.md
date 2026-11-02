@@ -24,7 +24,7 @@ In Docker Build, build arguments (ARG) and environment variables (ENV) both serv
 
 Example [`1.arg`](./1.arg):
 ```shell
-docker build --build-arg NAME=paulao -t app:arg.1 -f arg . 
+docker build --build-arg NAME=paulao -t app:arg.1 -f 1.arg . 
 ```
 
 ## CMD vs ENTRYPOINT
@@ -38,7 +38,7 @@ The two stages in [`2.cmd_entrypoint`](./2.cmd_entrypoint) show both cases:
 
 1. CMD only
 ```bash
-docker build -f cmd_entrypoint --target cmd_only -t demo:cmd .
+docker build -f 2.cmd_entrypoint --target cmd_only -t demo:cmd .
 docker run --rm demo:cmd
 docker run --rm demo:cmd echo replacement
 ```
@@ -46,7 +46,7 @@ docker run --rm demo:cmd echo replacement
 2. ENTRYPOINT + CMD
 
 ```bash
-docker build -f cmd_entrypoint -t demo:entrypoint .
+docker build -f 2.cmd_entrypoint -t demo:entrypoint .
 docker run --rm demo:entrypoint
 docker run --rm demo:entrypoint coisola
 ```

@@ -34,13 +34,13 @@ docker build --build-arg NAME=paulao -t app:arg.1 -f arg .
 - Arguments after the image name in `docker run` replace `CMD`; the `ENTRYPOINT` still runs.  
 - Shell form (`CMD echo hello`) runs through a shell and does not pass arguments to an exec-form `ENTRYPOINT` the same way.
 
-The two stages in [`cmd_entrypoint`](./cmd_entrypoint) show both cases:
+The two stages in [`Dockerfile`](./cmd_entrypoint) show both cases:
 
 1. CMD only
 ```bash
 docker build -f cmd_entrypoint --target cmd_only -t demo:cmd .
-docker run --rm demo:cmd                  # Hello from CMD
-docker run --rm demo:cmd echo replacement # replacement
+docker run --rm demo:cmd
+docker run --rm demo:cmd echo replacement
 ```
 
 2. ENTRYPOINT + CMD

@@ -15,80 +15,72 @@ The examples use the Go app in [`./app`](./app/main.go) and different Dockerfile
 - `CMD` sets the default command or default arguments for `ENTRYPOINT`. `docker run` arguments can replace it; only the last `CMD` takes effect.
 - `ENTRYPOINT` sets the executable run when the container starts. With exec-form `ENTRYPOINT`, `CMD` can supply its default arguments.
 
-References:
-- https://docs.docker.com/build/building/variables/
-FROM base:${CODE_VERSION}
 
 
+## Build arguments
 
+Build arguments are variables for the Dockerfile itself. Use them to parameterize values of Dockerfile instructions.
+In Docker Build, build arguments (ARG) and environment variables (ENV) both serve as a means to pass information into the build process. You can use them to parameterize the build, allowing for more flexible and configurable builds.
 
 Example [`Dockerfile`](./arg):
 ```shell
 docker build --build-arg NAME=paulao -t app:arg.1 -f arg . 
 ```
 
-
-
-
-
-
 ## CMD vs ENTRYPOINT
 
-Exec form - https://docs.docker.com/reference/dockerfile/#exec-form
-Dockerfile should specify at least one of CMD or ENTRYPOINT commands.
-The exec form is parsed as a JSON array, 
-shell form - a regular string
-. The shell form string lets you escape newlines using the escape character (backslash by default) to continue a single instruction onto the next line. This makes it easier to use with longer commands, because it lets you split them up into multiple lines. For example, consider these two lines:
-RUN source $HOME/.bashrc && \
-echo $HOME
+- `CMD` supplies the default command when used alone. 
+- With an exec-form `ENTRYPOINT`, it supplies default arguments to that executable. 
+- Arguments after the image name in `docker run` replace `CMD`; the `ENTRYPOINT` still runs.  
+- Shell form (`CMD echo hello`) runs through a shell and does not pass arguments to an exec-form `ENTRYPOINT` the same way.
 
-RUN source $HOME/.bashrc && echo $HOME
+The two stages in [`cmd_entrypoint`](./cmd_entrypoint) show both cases:
 
-
-CMD should rarely be used in the manner of CMD ["param", "param"] in conjunction with ENTRYPOINT, unless you and your expected users are already quite familiar with how ENTRYPOINT works.
-CMD ["executable","param1","param2"] (exec form)
-CMD ["param1","param2"] (exec form, as default parameters to ENTRYPOINT)
-CMD command param1 param2 (shell form)
-
-### entrypoint - 
-https://docs.docker.com/reference/dockerfile/#exec-form-entrypoint-example  
-https://docs.docker.com/reference/dockerfile/#understand-how-cmd-and-entrypoint-interact
-
-If you would like your container to run the same executable every time, then you should consider using ENTRYPOINT in combination with CMD. See ENTRYPOINT. If the user specifies arguments to docker run then they will override the default specified in CMD, but still use the default ENTRYPOINT.   
-
-You can specify a plain string for the ENTRYPOINT and it will execute in /bin/sh -c. 
-
-When combining exec form ENTRYPOINT with CMD, use the exec form of CMD as well. Using the shell form of CMD causes it to be wrapped in /bin/sh -c, which means the ENTRYPOINT receives a shell invocation as its argument rather than the bare command and parameters. 
-
-
-File to demonstrates: CMD vs entrypoint
-```shell
-docker build  -t app:entrypoint.1 -f cmd_entrypoint . 
+1. CMD only
+```bash
+docker build -f cmd_entrypoint --target cmd_only -t demo:cmd .
+docker run --rm demo:cmd                  # Hello from CMD
+docker run --rm demo:cmd echo replacement # replacement
 ```
 
-## Build arguments
-
-https://docs.docker.com/build/building/variables/#build-arguments
-
-Build arguments are variables for the Dockerfile itself. Use them to parameterize values of Dockerfile instructions
-In Docker Build, build arguments (ARG) and environment variables (ENV) both serve as a means to pass information into the build process. You can use them to parameterize the build, allowing for more flexible and configurable builds.
-https://docs.docker.com/get-started/docker-concepts/building-images/understanding-image-layers/
-
-
-
-Build the existing Dockerfile from this directory:
+2. ENTRYPOINT + CMD
 
 ```bash
-docker build -f layers_1 -t dockerfile-layers-1 .
-docker run --rm dockerfile-layers-1
-# Hello, Docker!
+docker build -f cmd_entrypoint -t demo:entrypoint .
+docker run --rm demo:entrypoint
+docker run --rm demo:entrypoint coisola
 ```
 
-## Layers and copy-on-write
+## Shell vs Exec mode
 
-Filesystem changes made by instructions such as `COPY` and `RUN` are stored in image layers. Once created, those layers are read-only and can be shared. A running container sees them as one filesystem and gets its own writable layer. When the container changes a file from the image, the changed version is recorded in its writable layer; the original remains available to other containers. This is *copy-on-write* (CoW). Sharing the base avoids duplicating it for every container, and starting a container does not require copying the entire image first.
+Exec form starts the program directly as the container's main process (PID 1). It receives stop signals, and Kubernetes reports its exit code.
 
-### A file removed in the same `RUN`
+```dockerfile
+CMD ["echo", "hello"]
+```
+
+Shell form starts `/bin/sh -c` to run the command. If the shell remains as PID 1, it receives stop signals instead of the app, and Kubernetes reports the shell's exit code. The shell may not forward signals or preserve the app's exit code.
+
+```dockerfile
+CMD echo hello
+```
+
+
+## References
+- https://docs.docker.com/reference/dockerfile/#understand-how-cmd-and-entrypoint-interact
+- https://docs.docker.com/build/building/variables/#build-arguments
+- https://docs.docker.com/get-started/docker-concepts/building-images/understanding-image-layers/
+- https://docs.docker.com/build/building/variables/
+
+
+
+# Image Layers and copy-on-write
+
+Images are read-only.
+
+Filesystem changes made by instructions such as `COPY` and `RUN` are stored in image layers. Once created, those layers are read-only. A running container sees them as one filesystem and gets its own writable layer. When the container changes a file from the image, the changed version is recorded in its writable layer; the original remains available to other containers. This is *copy-on-write* (CoW). Sharing the base avoids duplicating it for every container, and starting a container does not require copying the entire image first.
+
+### How layers work`
 
 [`layers_1`](./layers_1) creates a 200 MB temporary file and removes it before the instruction finishes:
 

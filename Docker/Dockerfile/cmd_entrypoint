@@ -1,0 +1,6 @@
+FROM golang:1.25 AS cmd_only
+CMD ["echo", "Hello from CMD"]
+
+FROM golang:1.25
+ENTRYPOINT ["echo", "Message:"]
+CMD ["default"]

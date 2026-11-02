@@ -1,0 +1,11 @@
+ARG NAME="jorjao" 
+FROM golang:1.25 AS build
+
+#Scope
+#ARG NAME="jorjao" 
+WORKDIR /app
+COPY ./app ./
+
+RUN echo "hello, ${NAME}"
+
+CMD ["/app/hello"]

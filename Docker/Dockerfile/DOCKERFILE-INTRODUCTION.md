@@ -1,14 +1,80 @@
-# Dockerfile essentials: smaller images and predictable containers
+# Dockerfile essentials
 
-The examples use the Go program in [`./app`](./app/main.go) and the paths established by [`layers_1`](./layers_1): source in `/app`, executable at `/app/hello`. Each Dockerfile isolates one idea. Together they show two measurable size improvements and one change in how a container starts.
+The examples use the Go app in [`./app`](./app/main.go) and different Dockerfiles to show how instructions affect the final image.
 
-## The basic instructions
 
-In `layers_1`, `FROM golang:1.25` provides the Go toolchain, `WORKDIR /app` selects the working directory, `COPY ./app ./` copies the source, and `RUN go build -o /app/hello .` builds the executable. `RUN` runs at **build time**. `CMD ["/app/hello"]` sets a default command for **container startup**.
+# Common Dockerfile instructions
 
-**`COPY` versus `ADD`:** `COPY` copies files from the build context or another build stage. `ADD` can also fetch a URL or automatically unpack a local tar archive. For ordinary files such as `./app`, use `COPY` so the action is explicit.
+- `FROM` selects the base image and starts a build stage.
+- `ARG` defines a build-time variable. It is the only instruction allowed before the first `FROM`. Also worth mentioning that it's scopped.
+- `RUN` executes a command while building the image and saves the filesystem changes.
+- `COPY` copies files from the build context or another stage into the image.
+- `ADD` also copies files, and can fetch a URL or unpack a local tar archive. A tar archive fetched from a URL is not unpacked automatically.
+- `ENV` sets an environment variable that remains available in the built image and its containers.
+- `WORKDIR` sets the directory for later instructions and the container's starting working directory.
+- `CMD` sets the default command or default arguments for `ENTRYPOINT`. `docker run` arguments can replace it; only the last `CMD` takes effect.
+- `ENTRYPOINT` sets the executable run when the container starts. With exec-form `ENTRYPOINT`, `CMD` can supply its default arguments.
 
-**Does `WORKDIR` also affect the running app?** Yes. It sets the container process's initial working directory, so the program starts in `/app` unless `docker run -w` overrides it. It also controls where relative paths in later Dockerfile instructions are resolved. It does not change the program's source code or the meaning of absolute paths.
+References:
+- https://docs.docker.com/build/building/variables/
+FROM base:${CODE_VERSION}
+
+
+
+
+Example [`Dockerfile`](./arg):
+```shell
+docker build --build-arg NAME=paulao -t app:arg.1 -f arg . 
+```
+
+
+
+
+
+
+## CMD vs ENTRYPOINT
+
+Exec form - https://docs.docker.com/reference/dockerfile/#exec-form
+Dockerfile should specify at least one of CMD or ENTRYPOINT commands.
+The exec form is parsed as a JSON array, 
+shell form - a regular string
+. The shell form string lets you escape newlines using the escape character (backslash by default) to continue a single instruction onto the next line. This makes it easier to use with longer commands, because it lets you split them up into multiple lines. For example, consider these two lines:
+RUN source $HOME/.bashrc && \
+echo $HOME
+
+RUN source $HOME/.bashrc && echo $HOME
+
+
+CMD should rarely be used in the manner of CMD ["param", "param"] in conjunction with ENTRYPOINT, unless you and your expected users are already quite familiar with how ENTRYPOINT works.
+CMD ["executable","param1","param2"] (exec form)
+CMD ["param1","param2"] (exec form, as default parameters to ENTRYPOINT)
+CMD command param1 param2 (shell form)
+
+### entrypoint - 
+https://docs.docker.com/reference/dockerfile/#exec-form-entrypoint-example  
+https://docs.docker.com/reference/dockerfile/#understand-how-cmd-and-entrypoint-interact
+
+If you would like your container to run the same executable every time, then you should consider using ENTRYPOINT in combination with CMD. See ENTRYPOINT. If the user specifies arguments to docker run then they will override the default specified in CMD, but still use the default ENTRYPOINT.   
+
+You can specify a plain string for the ENTRYPOINT and it will execute in /bin/sh -c. 
+
+When combining exec form ENTRYPOINT with CMD, use the exec form of CMD as well. Using the shell form of CMD causes it to be wrapped in /bin/sh -c, which means the ENTRYPOINT receives a shell invocation as its argument rather than the bare command and parameters. 
+
+
+File to demonstrates: CMD vs entrypoint
+```shell
+docker build  -t app:entrypoint.1 -f cmd_entrypoint . 
+```
+
+## Build arguments
+
+https://docs.docker.com/build/building/variables/#build-arguments
+
+Build arguments are variables for the Dockerfile itself. Use them to parameterize values of Dockerfile instructions
+In Docker Build, build arguments (ARG) and environment variables (ENV) both serve as a means to pass information into the build process. You can use them to parameterize the build, allowing for more flexible and configurable builds.
+https://docs.docker.com/get-started/docker-concepts/building-images/understanding-image-layers/
+
+
 
 Build the existing Dockerfile from this directory:
 

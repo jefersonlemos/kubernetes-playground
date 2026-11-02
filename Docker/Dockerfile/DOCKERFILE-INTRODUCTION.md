@@ -1,4 +1,4 @@
-# Dockerfile essentials
+b# Dockerfile essentials
 
 The examples use the Go app in [`./app`](./app/main.go) and different Dockerfiles to show how instructions affect the final image.
 
@@ -37,17 +37,23 @@ docker build --build-arg NAME=paulao -t app:arg.1 -f 1.arg .
 The two stages in [`2.cmd_entrypoint`](./2.cmd_entrypoint) show both cases:
 
 1. CMD only
-```bash
+```shell
 docker build -f 2.cmd_entrypoint --target cmd_only -t demo:cmd .
+```
+```shell
 docker run --rm demo:cmd
+
 docker run --rm demo:cmd echo replacement
 ```
 
 2. ENTRYPOINT + CMD
 
-```bash
+```shell
 docker build -f 2.cmd_entrypoint -t demo:entrypoint .
+```
+```shell
 docker run --rm demo:entrypoint
+
 docker run --rm demo:entrypoint coisola
 ```
 
@@ -77,16 +83,22 @@ Let's create a 200 MB temporary file inside the image and then remove it:
 
 [3.layers_1](./3.layers_1)  Creates the 200MB file and then removes it. Let's build and check the image size.
 
-```bash
+```shell
 docker build -f 3.layers_1 -t dockerfile-layers-1 .
+```
+```shell
 docker image ls 
+
 docker history dockerfile-layers-1
 ```
 
 [3.layers_2](./3.layers_2)  do the same thing but instead of a new `RUN` instruction, it adds the `rm` command in the same instruction.
-```bash
+```shell
 docker build -f 3.layers_2 -t dockerfile-layers-2 .
+```
+```shell
 docker image ls 
+
 docker history dockerfile-layers-2
 ```
 
